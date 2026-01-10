@@ -1,3 +1,10 @@
+import torch
+import torch.nn as nn
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+
+
 X = torch.tensor([[0.,0.],
                   [0.,1.],
                   [1.,0.],
