@@ -1,3 +1,9 @@
+import torch
+import torch.nn as nn
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+
 
 X = tf.constant([
     [0., 0.],
