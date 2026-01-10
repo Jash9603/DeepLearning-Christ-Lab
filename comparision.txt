@@ -1,0 +1,38 @@
+
+Effect of learning rate
+
+The learning rate decides how fast the model updates itself.
+
+If learning rate is too small:
+
+Learning is slow
+Loss decreases very gradually
+If learning rate is too large:
+
+Loss can jump up and down
+Model can become unstable
+In these results, the learning rate is balanced:
+
+Loss decreases smoothly
+No sudden jumps
+Final output is clean and correct
+
+Final Region Graph
+
+All three models (Keras, PyTorch, TensorFlow low-level) learned the XOR pattern correctly.
+
+The color regions show that:
+
+The model separates diagonal points correctly
+A non-straight (non-linear) boundary is learned
+Final outputs are almost the same for all three methods
+Small differences in shape happen because each framework starts with slightly different initial values, but the final understanding is the same.
+
+Training loss graphs
+
+In all three graphs:
+
+Loss starts high, meaning the model is guessing
+Loss goes down steadily, meaning learning is happening
+Loss becomes very small, meaning the model learned XOR well
+PyTorch and TensorFlow low-level reduce loss a bit faster at the start, while Keras is slightly smoother. This difference is normal and not a problem.
