@@ -70,9 +70,43 @@ def conv_forward(image, filt, bias, stride=1):
 # Each filter slides across the image and computes element-wise multiplication followed by summation and bias addition
 # This process generates feature maps that highlight patterns such as edges and curves, enabling the CNN to learn meaningful representations from the input
 
-# ReLU Activation
+
+
+def conv_backward(dout, image, filt, stride=1):
+    n_filters, n_c, f, _ = filt.shape
+    _, in_dim, _ = image.shape
+
+    dF = np.zeros_like(filt)
+    dImage = np.zeros_like(image)
+    dBias = np.zeros((n_filters,1))
+
+    for curr_f in range(n_filters):
+        curr_y = out_y = 0
+        while curr_y + f <= in_dim:
+            curr_x = out_x = 0
+            while curr_x + f <= in_dim:
+                dF[curr_f] += dout[curr_f, out_y, out_x] * \
+                    image[:, curr_y:curr_y+f, curr_x:curr_x+f]
+
+                dImage[:, curr_y:curr_y+f, curr_x:curr_x+f] += \
+                    dout[curr_f, out_y, out_x] * filt[curr_f]
+
+                curr_x += stride
+                out_x += 1
+            curr_y += stride
+            out_y += 1
+
+        dBias[curr_f] = np.sum(dout[curr_f])
+
+    return dF, dBias, dImage
+
 def relu(x):
     return np.maximum(0, x)
+
+def relu_backward(dout, x):
+    dx = dout.copy()
+    dx[x <= 0] = 0
+    return dx
 
 # function takes image, size of pooling window and
 # stride of pooling window as input
@@ -108,6 +142,30 @@ def maxpool(image, size=2, stride=2):
             out_y += 1
     return downsampled
 
+def maxpool_backward(dout, image, size=2, stride=2):
+    n_c, h_prev, w_prev = image.shape
+    dx = np.zeros_like(image)
+
+    for i in range(n_c):
+        curr_y = out_y = 0
+        while curr_y + size <= h_prev:
+            curr_x = out_x = 0
+            while curr_x + size <= w_prev:
+                window = image[i, curr_y:curr_y+size, curr_x:curr_x+size]
+                max_val = np.max(window)
+
+                for y in range(size):
+                    for x in range(size):
+                        if window[y, x] == max_val:
+                            dx[i, curr_y+y, curr_x+x] = dout[i, out_y, out_x]
+
+                curr_x += stride
+                out_x += 1
+            curr_y += stride
+            out_y += 1
+
+    return dx
+
 # softmax converts raw output scores into probabilities
 # we subtract by np.max(x) to prevent numerical overflow when exponent value become very large
 # cross_entropy measures how wrong the prediction is
@@ -122,10 +180,22 @@ def softmax(x):
 def cross_entropy(pred, label):
     return -np.log(pred[label])
 
+def softmax_crossentropy_backward(probs, label):
+    grad = probs.copy()
+    grad[label] -= 1
+    return grad
+
 # Fully Connected Layer
 
 def dense(x, W, b):
     return np.dot(W, x) + b
+
+
+def dense_backward(dout, x, W):
+    dW = np.dot(dout, x.T)
+    db = dout
+    dx = np.dot(W.T, dout)
+    return dW, db, dx
 
 np.random.seed(0)
 
@@ -141,33 +211,43 @@ W = np.random.randn(10, 1352) * 0.01
 # 10 biase
 b = np.zeros((10,1))
 
-# process 10 first images
-for i in range(10):
-  # input image
-  img = x_train[i]
-  # label
-  label = y_train[i]
+lr = 0.01
 
-  # convolution layer
-  conv = conv_forward(img, filt, bias)
+for i in range(100):   # train on 100 images
+    img = x_train[i]
+    label = y_train[i]
 
-  # relu activation function to remove negative values
-  relu_out = relu(conv)
+    # -------- Forward --------
+    conv = conv_forward(img, filt, bias)
+    relu_out = relu(conv)
+    pool = maxpool(relu_out)
+    fc_input = pool.flatten().reshape(-1,1)
+    out = dense(fc_input, W, b)
+    probs = softmax(out)
 
-  # max pooling
-  pool = maxpool(relu_out)
+    loss = cross_entropy(probs, label)
 
-  # falttening the output
-  fc_input = pool.flatten().reshape(-1,1)
+    # -------- Backward --------
+    dout = softmax_crossentropy_backward(probs, label)
 
-  # sending it to dense layer
-  out = dense(fc_input, W, b)
+    dW, db, d_fc = dense_backward(dout, fc_input, W)
 
-  # softmax activation function to count probabilities
-  probs = softmax(out)
+    d_pool = d_fc.reshape(pool.shape)
 
-  print("Predicted:", np.argmax(probs))
-  print("Actual:", label)
+    d_relu = maxpool_backward(d_pool, relu_out)
+
+    d_conv = relu_backward(d_relu, conv)
+
+    dF, dBias, dImage = conv_backward(d_conv, img, filt)
+
+    # -------- Update --------
+    W -= lr * dW
+    b -= lr * db
+    filt -= lr * dF
+    bias -= lr * dBias
+
+    if i % 10 == 0:
+        print("Loss:", loss)
 
 """# YOLO"""
 
