@@ -137,6 +137,8 @@ def train_model(lambda_sparse):
 
     return model
 
+model = train_model(1e-5)
+
 model.eval()
 
 test_loss = 0
@@ -173,7 +175,7 @@ for i in range(5):
 
 plt.show()
 
-"""# Expermient with diffrent learning rate"""
+"""# Experiment with Diffrent learning rate"""
 
 dataiter = iter(test_loader)
 images, _ = next(dataiter)
@@ -181,17 +183,12 @@ images, _ = next(dataiter)
 images_flat = images.view(images.size(0), -1).to(device)
 
 sparsity_values = [0, 1e-5, 1e-4, 1e-3]
-
 results = []
-
 for lam in sparsity_values:
 
     print("Training with lambda_sparse =", lam)
-
     model = train_model(lam)
-
     model.eval()
-
     with torch.no_grad():
         _, outputs = model(images_flat)
 
